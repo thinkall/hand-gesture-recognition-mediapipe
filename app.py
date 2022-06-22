@@ -6,6 +6,7 @@ import argparse
 import itertools
 from collections import Counter
 from collections import deque
+import time
 
 import cv2 as cv
 import numpy as np
@@ -15,11 +16,13 @@ from utils import CvFpsCalc
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
+import pyautogui
+
 
 def get_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--device", type=int, default=0)
+    parser.add_argument("--device", type=int, default=1)
     parser.add_argument("--width", help='cap width', type=int, default=960)
     parser.add_argument("--height", help='cap height', type=int, default=540)
 
@@ -102,7 +105,7 @@ def main():
         fps = cvFpsCalc.get()
 
         # Process Key (ESC: end) #################################################
-        key = cv.waitKey(10)
+        key = cv.waitKey(100)
         if key == 27:  # ESC
             break
         number, mode = select_mode(key, mode)
@@ -145,6 +148,14 @@ def main():
                     point_history.append(landmark_list[8])
                 else:
                     point_history.append([0, 0])
+                
+                # Hand Sign Action
+                if hand_sign_id == 0:
+                    pyautogui.hotkey('ctrl', 'win', 'right')
+                elif hand_sign_id == 1:
+                    pyautogui.hotkey('ctrl', 'win', 'left')
+                elif hand_sign_id == 3:
+                    break
 
                 # Finger gesture classification
                 finger_gesture_id = 0
@@ -158,6 +169,15 @@ def main():
                 most_common_fg_id = Counter(
                     finger_gesture_history).most_common()
 
+                
+                # # Gesture Action
+                # if most_common_fg_id[0][0] == 0:
+                #     time.sleep(1)
+                #     pyautogui.hotkey('win', 'e')
+                # elif most_common_fg_id[0][0] == 3:
+                #     time.sleep(1)
+                #     pyautogui.hotkey('alt', 'f4')
+
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
@@ -167,6 +187,7 @@ def main():
                     handedness,
                     keypoint_classifier_labels[hand_sign_id],
                     point_history_classifier_labels[most_common_fg_id[0][0]],
+                    # str(most_common_fg_id[0][0]),
                 )
         else:
             point_history.append([0, 0])
