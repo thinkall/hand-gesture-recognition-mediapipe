@@ -7,6 +7,7 @@ import itertools
 from collections import Counter
 from collections import deque
 import time
+from concurrent.futures import ProcessPoolExecutor
 
 import cv2 as cv
 import numpy as np
@@ -19,10 +20,14 @@ from model import PointHistoryClassifier
 import pyautogui
 
 
+executor = ProcessPoolExecutor(max_workers=2)
+
+
 def get_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--device", type=int, default=1)
+    parser.add_argument("--device", type=int, default=0)
+    parser.add_argument("--cap_wait_time", type=int, default=100)
     parser.add_argument("--width", help='cap width', type=int, default=960)
     parser.add_argument("--height", help='cap height', type=int, default=540)
 
@@ -41,11 +46,37 @@ def get_args():
     return args
 
 
+def action_hand_sign(hand_sign_label):
+    if hand_sign_label.lower() == 'close':
+        # pyautogui.hotkey('ctrl','win', 'right')
+        pass
+    elif hand_sign_label.lower() == 'open':
+        # pyautogui.hotkey('ctrl','win', 'left')
+        pass
+    elif hand_sign_label.lower() == 'left':
+        pyautogui.press('left')
+    elif hand_sign_label.lower() == 'right':
+        pyautogui.press('right')
+    elif hand_sign_label.lower() == 'up':
+        pyautogui.press('up')
+    elif hand_sign_label.lower() == 'down':
+        pyautogui.press('down')
+    elif hand_sign_label.lower() == 'magnify':
+        pyautogui.keyDown('ctrl')
+        pyautogui.scroll(200)
+        pyautogui.keyUp('ctrl')
+    elif hand_sign_label.lower() == 'shrink':
+        pyautogui.keyDown('ctrl')
+        pyautogui.scroll(-200)
+        pyautogui.keyUp('ctrl')
+
+
 def main():
     # Argument parsing #################################################################
     args = get_args()
 
     cap_device = args.device
+    cap_wait_time = args.cap_wait_time
     cap_width = args.width
     cap_height = args.height
 
@@ -105,7 +136,7 @@ def main():
         fps = cvFpsCalc.get()
 
         # Process Key (ESC: end) #################################################
-        key = cv.waitKey(100)
+        key = cv.waitKey(cap_wait_time)
         if key == 27:  # ESC
             break
         number, mode = select_mode(key, mode)
@@ -150,12 +181,8 @@ def main():
                     point_history.append([0, 0])
                 
                 # Hand Sign Action
-                if hand_sign_id == 0:
-                    pyautogui.hotkey('ctrl', 'win', 'right')
-                elif hand_sign_id == 1:
-                    pyautogui.hotkey('ctrl', 'win', 'left')
-                elif hand_sign_id == 3:
-                    break
+                hand_sign_label = keypoint_classifier_labels[hand_sign_id]
+                executor.submit(action_hand_sign, hand_sign_label)
 
                 # Finger gesture classification
                 finger_gesture_id = 0
